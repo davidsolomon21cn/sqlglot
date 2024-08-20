@@ -593,7 +593,7 @@ class BigQuery(Dialect):
                 return None
 
             unnest_expr = seq_get(unnest.expressions, 0)
-            if unnest_expr and not unnest.args.get("alias"):
+            if unnest_expr:
                 from sqlglot.optimizer.annotate_types import annotate_types
 
                 unnest_expr = annotate_types(unnest_expr)
