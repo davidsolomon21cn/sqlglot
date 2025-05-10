@@ -3346,7 +3346,8 @@ class Generator(metaclass=_Generator):
             collate = f" COLLATE {collate}" if collate else ""
             using = self.sql(expression, "using")
             using = f" USING {using}" if using else ""
-            return f"ALTER COLUMN {this} {self.ALTER_SET_TYPE} {dtype}{collate}{using}"
+            alter_set_type = self.ALTER_SET_TYPE + " " if self.ALTER_SET_TYPE else ""
+            return f"ALTER COLUMN {this} {alter_set_type}{dtype}{collate}{using}"
 
         default = self.sql(expression, "default")
         if default:
@@ -4924,3 +4925,9 @@ class Generator(metaclass=_Generator):
             return f"PUT {this} {target}{props_sql}"
         else:
             return f"GET {target} {this}{props_sql}"
+
+    def translatecharacters_sql(self, expression: exp.TranslateCharacters):
+        this = self.sql(expression, "this")
+        expr = self.sql(expression, "expression")
+        with_error = " WITH ERROR" if expression.args.get("with_error") else ""
+        return f"TRANSLATE({this} USING {expr}{with_error})"
