@@ -16,6 +16,7 @@ from sqlglot.helper import logger as helper_logger
 from sqlglot.parser import logger as parser_logger
 from tests.dialects.test_dialect import Validator
 from sqlglot.optimizer.annotate_types import annotate_types
+from sqlglot.optimizer.qualify import qualify
 
 
 class TestBigQuery(Validator):
@@ -1684,6 +1685,39 @@ WHERE
             "EXPORT DATA WITH CONNECTION myproject.us.myconnection OPTIONS (URI='gs://path*.csv.gz', FORMAT='CSV') AS SELECT * FROM all_rows"
         )
 
+        self.validate_all(
+            "SELECT * FROM t1, UNNEST(`t1`) AS `col`",
+            read={
+                "duckdb": 'SELECT * FROM t1, UNNEST("t1") "t1" ("col")',
+            },
+            write={
+                "bigquery": "SELECT * FROM t1, UNNEST(`t1`) AS `col`",
+                "redshift": 'SELECT * FROM t1, "t1" AS "col"',
+            },
+        )
+
+        self.validate_all(
+            "SELECT * FROM t, UNNEST(`t2`.`t3`) AS `col`",
+            read={
+                "duckdb": 'SELECT * FROM t, UNNEST("t1"."t2"."t3") "t1" ("col")',
+            },
+            write={
+                "bigquery": "SELECT * FROM t, UNNEST(`t2`.`t3`) AS `col`",
+                "redshift": 'SELECT * FROM t, "t2"."t3" AS "col"',
+            },
+        )
+
+        self.validate_all(
+            "SELECT * FROM t1, UNNEST(`t1`.`t2`.`t3`.`t4`) AS `col`",
+            read={
+                "duckdb": 'SELECT * FROM t1, UNNEST("t1"."t2"."t3"."t4") "t3" ("col")',
+            },
+            write={
+                "bigquery": "SELECT * FROM t1, UNNEST(`t1`.`t2`.`t3`.`t4`) AS `col`",
+                "redshift": 'SELECT * FROM t1, "t1"."t2"."t3"."t4" AS "col"',
+            },
+        )
+
     def test_errors(self):
         with self.assertRaises(TokenError):
             transpile("'\\'", read="bigquery")
@@ -2489,3 +2523,20 @@ OPTIONS (
             information_schema_sql[table_meta["start"] : table_meta["end"] + 1]
             == "`region.INFORMATION_SCHEMA.COLUMNS`"
         )
+
+    def test_override_normalization_strategy(self):
+        sql = "SELECT * FROM p.d.t"
+        ast = self.parse_one(sql)
+        qualified = qualify(ast.copy(), dialect="bigquery,normalization_strategy=uppercase")
+        self.assertEqual(qualified.sql("bigquery"), "SELECT * FROM `P`.`D`.`T` AS `T`")
+
+        from sqlglot.dialects import BigQuery
+        from sqlglot.dialects.dialect import NormalizationStrategy
+
+        try:
+            BigQuery.NORMALIZATION_STRATEGY = NormalizationStrategy.UPPERCASE
+
+            qualified = qualify(ast.copy(), dialect="bigquery,normalization_strategy=uppercase")
+            self.assertEqual(qualified.sql("bigquery"), "SELECT * FROM `P`.`D`.`T` AS `T`")
+        finally:
+            BigQuery.NORMALIZATION_STRATEGY = NormalizationStrategy.CASE_INSENSITIVE
