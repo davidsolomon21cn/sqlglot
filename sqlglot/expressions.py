@@ -5493,6 +5493,10 @@ class ApproxTopSum(AggFunc):
     arg_types = {"this": True, "expression": True, "count": True}
 
 
+class ApproxQuantiles(AggFunc):
+    arg_types = {"this": True, "expression": False}
+
+
 class FarmFingerprint(Func):
     arg_types = {"expressions": True}
     is_var_len_args = True
@@ -5592,6 +5596,10 @@ class ToChar(Func):
     }
 
 
+class ToCodePoints(Func):
+    pass
+
+
 # https://docs.snowflake.com/en/sql-reference/functions/to_decimal
 # https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/TO_NUMBER.html
 class ToNumber(Func):
@@ -5610,6 +5618,10 @@ class ToDouble(Func):
         "this": True,
         "format": False,
     }
+
+
+class CodePointsToBytes(Func):
+    pass
 
 
 class Columns(Func):
@@ -6605,6 +6617,14 @@ class JSONArrayContains(Binary, Predicate, Func):
     _sql_names = ["JSON_ARRAY_CONTAINS"]
 
 
+class ParseBignumeric(Func):
+    pass
+
+
+class ParseNumeric(Func):
+    pass
+
+
 class ParseJSON(Func):
     # BigQuery, Snowflake have PARSE_JSON, Presto has JSON_PARSE
     # Snowflake also has TRY_PARSE_JSON, which is represented using `safe`
@@ -6921,6 +6941,10 @@ class RowNumber(Func):
 
 class SafeDivide(Func):
     arg_types = {"this": True, "expression": True}
+
+
+class SafeConvertBytesToString(Func):
+    pass
 
 
 class SHA(Func):
